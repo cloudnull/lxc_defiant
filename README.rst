@@ -30,7 +30,7 @@ Here is an example LXC create command using the new template.
                -- \
                --username capt_user \
                --password capt_password \
-               --bindhome "checkov"
+               --bindhome "checkov" \
                --bind-dir /path/to/bind/dir \
                --optional-packages python-dev,curl,wget
 
