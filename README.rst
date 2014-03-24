@@ -7,10 +7,22 @@ Defiant, LXC Container Template
 
 
 This template was created to allow you to create a better LXC container.  The
-container template has many options which enhance standard container creation
-templates which are available via the package manager.
+container template has many options which enhance standard container creation.
+This template was built using the ``lxc-ubuntu`` template as a model for
+container creation therefore some of the decisions I have made regarding the
+implementation and layout may make additional operating system deployment
+impossible.
+
+This template is new and while it's working very well the API may be refactored
+to add additional features and or compatibility.
+
+
+Installing the Template
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To use this container template move it into the global templates directory
+
+On LXC < 1.0.0
 
 .. code-block:: bash
 
@@ -18,13 +30,26 @@ To use this container template move it into the global templates directory
   chmod +x /usr/lib/lxc/templates/lxc-defiant
 
 
-Here is an example LXC create command using the new template.
+On LXC > 1.0.0
+
+.. code-block:: bash
+
+  mv lxc-defiant /usr/share/lxc/templates/lxc-defiant
+  chmod +x /usr/share/lxc/templates/lxc-defiant
+
+
+Usage
+~~~~~
+
+Here is an example LXC create command using the new template. Note that if
+you are using LXC < 1.0.0 the file ``/etc/lxc/default.conf`` may be named
+``/etc/lxc/lxc.conf``.
 
 .. code-block:: bash
 
     lxc-create -n capt_container \
                -t defiant \
-               -f /etc/lxc/lxc.conf \
+               -f /etc/lxc/default.conf \
                --fstype ext4 \
                --fssize 5G \
                -- \
@@ -34,6 +59,9 @@ Here is an example LXC create command using the new template.
                --bind-dir /path/to/bind/dir \
                --optional-packages python-dev,curl,wget
 
+
+Overview
+~~~~~~~~
 
 Here is a synopsis on what we're doing:
 
@@ -60,21 +88,11 @@ Here is a synopsis on what we're doing:
 
 Once the container is built the password and username will be flashed
 on the screen. Write this down!  If you loose it it will not be retrievable 
-without messing with the container itself...
-
-After the container is built, you can start it and make it start on host boot
-by normal means. This is an optional step and unrelated to the template itself.
-
-.. code-block:: bash
-
-    # Start Container
-    lxc-start -n $SOMENAME -d
-
-    # Make the container persistent after reboot
-    sudo ln -s /var/lib/lxc/$SOMENAME/config /etc/lxc/auto/$SOMENAME.conf
+without messing with the container itself. When read start your new container.
 
 
-Here are all of the available options:
+Command Line options
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
