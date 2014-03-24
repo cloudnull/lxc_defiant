@@ -106,6 +106,7 @@ Here are all of the available options:
       -P , --password       Password for new Default user, default is defiant
       -p , --path           Installation Path
       -r , --release        Change the Container Distribution Release
+      --rootfs              Define the rootfs
       -U , --username       Username to create, default is "defiant"
 
     Licensed "GPLv3+"
@@ -116,8 +117,10 @@ NOTICE
 
 This template presently only supports the Ubuntu minimal image. While the
 template has been designed to work with multiple distributions I have not
-gotten around to adding them as of yet.  Additionally this template has only
-been tested on a host running Ubuntu 12.04 or > with LXC 0.7.5
+gotten around to adding them as of yet.
+
+This template has only been tested on a host running Ubuntu 12.04 - 13.10
+with LXC 0.7.5 - 1.0.1
 
 
 License
@@ -126,7 +129,6 @@ License
 License:
   Copyright [2014] [Kevin Carter]
 
-  Copyright [2013] [Kevin Carter]
   License Information :
   This software has no warranty, it is provided 'as is'. It is your
   responsibility to validate the behavior of the routines and its accuracy
