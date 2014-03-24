@@ -208,7 +208,9 @@ DISTRO_DATA = {
         'policy_rcd': DEFAULT_POLICY_D,
         'packages': [
             'ssh',
-            'vim'
+            'vim',
+            'language-pack-en',
+
         ]
     }
 }
@@ -249,6 +251,15 @@ ARGS = {
         'default': 512,
         'help': 'Max Ram that the container is allowed to consume. written'
                 ' in Megabytes, default is %(default)s',
+    },
+    'rootfs': {
+        'args': [
+            '--rootfs',
+        ],
+        'required': False,
+        'type': str,
+        'metavar': '',
+        'help': 'Define the rootfs',
     },
     'path': {
         'args': [
@@ -518,7 +529,7 @@ def copy_system(cache, arch, rootfs):
     mkdir_p(rootfs)
     _rootfs = os.path.join(cache, 'rootfs-%s' % arch)
     commands = [
-        'rsync -a %s/ %s/' % (_rootfs, rootfs)
+        'rsync -Ha %s/ %s/' % (_rootfs, rootfs)
     ]
     _execute_command(commands=commands)
 
@@ -1125,13 +1136,13 @@ def _distro_check():
     if 'ubuntu' in distro:
         return 'ubuntu'
     elif 'debian' in distro:
-        return 'debian'
+        raise NotImplementedError('Support for Debian is not ready yet')
     elif 'redhat' in distro:
-        return 'redhat'
+        raise NotImplementedError('Support for RedHat is not ready yet')
     elif 'centos' in distro:
-        return 'centos'
+        raise NotImplementedError('Support for CentOS is not ready yet')
     elif 'suse' in distro:
-        return 'suse'
+        raise NotImplementedError('Support for SUSE is not ready yet')
     else:
         raise SystemExit('Distro [ %s ] is unsupported.' % distro)
 
@@ -1144,7 +1155,13 @@ def main():
     if os.getuid() is not 0:
         raise SystemExit('To use this template you must be ROOT')
 
-    rootfs = os.path.join(args.path, 'rootfs')
+    # Allow the user to define the rootfs
+    if args.rootfs is None:
+        defined_rootfs = 'rootfs'
+    else:
+        defined_rootfs = args.rootfs
+
+    rootfs = os.path.join(args.path, defined_rootfs)
     distro = _distro_check()
 
     # Install the system
