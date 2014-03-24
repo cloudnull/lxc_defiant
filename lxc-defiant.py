@@ -1147,6 +1147,30 @@ def _distro_check():
         raise SystemExit('Distro [ %s ] is unsupported.' % distro)
 
 
+def get_rootfs(rootfs, path):
+    """Return the path to working the rootfs.
+
+    :param rootfs: ``str``
+    :param path: ``str``
+    """
+    config_file = '%s/config' % rootfs
+    if rootfs is not None and os.path.exists(config_file):
+        # Iterate through the existing configuration file if lxc.rootfs
+        # is found use the mount point in config as the placement for
+        # the file system.
+        with open(config_file, 'rb') as f:
+            conf = [i for i in f.readlines() if i.startswith('lxc.rootfs')]
+        # If something was found, use it for the rootfs
+        if conf:
+            _config_root = conf[0]
+            config_root = _config_root.split('=')
+            return config_root[-1].strip()
+        else:
+            return os.path.join(path, 'rootfs')
+    else:
+        return os.path.join(path, 'rootfs')
+
+
 def main():
     """Run the main container Template."""
     args = arg_parser().parse_args()
@@ -1155,13 +1179,9 @@ def main():
     if os.getuid() is not 0:
         raise SystemExit('To use this template you must be ROOT')
 
-    # Allow the user to define the rootfs
-    if args.rootfs is None:
-        defined_rootfs = 'rootfs'
-    else:
-        defined_rootfs = args.rootfs
+    rootfs = get_rootfs(args.rootfs, args.path)
 
-    rootfs = os.path.join(args.path, defined_rootfs)
+    # Check for the HOST OS Type
     distro = _distro_check()
 
     # Install the system
