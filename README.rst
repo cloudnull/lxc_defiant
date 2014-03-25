@@ -104,7 +104,10 @@ Command Line options
       -L , --bind-dir       bind a local directory to the container. Every entry
                             should be the FULL path to the directory that you want
                             to bind within the container. This can be used
-                            multiple times.
+                            multiple times. If you provide a target path in your
+                            command the specified directory will be bound to the
+                            provided path. Example usage: -L /tmp -L
+                            /var/log/container_logs=/var/log
       -b , --bindhome       bind <user>'s home into the container.
       -d, --debug           Enable Debug Mode
       -F, --flush-cache     Flush the image Cache
