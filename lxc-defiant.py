@@ -108,6 +108,12 @@ iface %(interface)s inet static
 """
 
 
+UBUNTU_NETWORK_LXC_BRIDGE = """
+auto eth0
+iface eth0 inet dhcp
+"""
+
+
 UBUNTU_NETWORK_INTERFACES = """
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
@@ -115,10 +121,6 @@ UBUNTU_NETWORK_INTERFACES = """
 # The loopback network interface
 auto lo
 iface lo inet loopback
-
-#THIS IS ALWAYS GOING TO BE THE LXC BRIDGE
-auto eth0
-iface eth0 inet dhcp
 """
 
 
@@ -146,6 +148,7 @@ DISTRO_DATA = {
         },
         'interface_template': UBUNTU_INTERFACE_TEMPLATE,
         'default_interface': UBUNTU_NETWORK_INTERFACES,
+        'basic_interface': UBUNTU_NETWORK_LXC_BRIDGE,
         'interface_file': 'etc/network/interfaces',
         'pkg_source_file': 'etc/apt/sources.list',
         'pkg_sources': UBUNTU_SOURCES,
@@ -848,6 +851,7 @@ def configure_system(distro, rootfs, hostname, username, password,
 
     _distro = DISTRO_DATA[distro]
     interfaces = _distro.get('default_interface')
+    basic_interface = _distro.get('basic_interface')
     if ipaddresses:
         for ip in ipaddresses:
             LOG.info('adding additional IP address %s', ip)
@@ -855,26 +859,36 @@ def configure_system(distro, rootfs, hostname, username, password,
             if len(ip_addr) < 4:
                 ip_addr.append(None)
             interfaces += '\n%s' % _interface_adder(*ip_addr)
+        if 'eth0' not in interfaces:
+            interfaces += '\n%s' % basic_interface
+    else:
+        interfaces += '\n%s' % basic_interface
 
     interface_file = os.path.join(rootfs, _distro.get('interface_file'))
     LOG.info('writting interface file %s', interface_file)
+    LOG.debug(interfaces)
     with open(interface_file, 'wb') as f:
         f.write(interfaces)
 
     ssh_file = os.path.join(rootfs, _distro.get('ssh_config_file'))
+    ssh_config = str(_distro.get('ssh_config'))
     LOG.info('writting sshd_config file %s', ssh_file)
+    LOG.debug(ssh_config)
     with open(ssh_file, 'wb') as f:
-        f.write(str(_distro.get('ssh_config')))
+        f.write(ssh_config)
 
     hostname_file = os.path.join(rootfs, _distro.get('hostname_file'))
     LOG.info('writting hostname file %s', hostname_file)
+    LOG.debug(hostname)
     with open(hostname_file, 'wb') as f:
         f.write(hostname)
 
     hosts_file = os.path.join(rootfs, _distro.get('hosts_file'))
+    hosts_content = str(_distro.get('hosts')) % {'hostname': hostname}
     LOG.info('writting hosts file %s', hosts_file)
+    LOG.debug(hosts_content)
     with open(hosts_file, 'wb') as f:
-        f.write(str(_distro.get('hosts')) % {'hostname': hostname})
+        f.write(hosts_content)
 
     detect = os.path.join(rootfs, 'etc', 'init', 'container-detect.conf')
     if os.path.exists(detect):
@@ -882,6 +896,7 @@ def configure_system(distro, rootfs, hostname, username, password,
         udev_path = os.path.join(rootfs, 'etc', 'udev', 'udev.conf')
         with open(udev_path, 'rb') as f:
             udev_content = f.read()
+            LOG.debug(udev_content)
 
         with open(udev_path, 'wb') as f:
             changed_udev_content = udev_content.replace('="err"', '=0')
