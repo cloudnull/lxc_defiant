@@ -24,6 +24,7 @@ import subprocess
 
 
 LOG = logging.getLogger('lxc_defiant')
+LXC_TEMPLATE_CONFIG = "/usr/share/lxc/config"
 
 
 DEFAULT_POLICY_D = """
@@ -32,55 +33,22 @@ exit 101
 """
 
 
-DEFAULT_FSTAB = """
-proc   proc  proc    nodev,noexec,nosuid  0 0
-sysfs  sys   sysfs   defaults             0 0
+DEFAULT_FSTAB = """# EMPTY BY DEFAULT
+# add additional mount points here
 """
 
 
 DEFAULT_LXC_CONFIG = """
-lxc.utsname = %(name)s
+# Common Template
+lxc.include = %(include)s
 
+lxc.utsname = %(name)s
 lxc.devttydir = %(ttydir)s
-lxc.tty = 4
-lxc.pts = 1024
-lxc.rootfs = %(rootfs)s
 lxc.mount  = %(path)s/fstab
 lxc.arch = %(arch)s
-lxc.cap.drop = sys_module mac_admin
-lxc.pivotdir = lxc_putold
 
 # Max ram
 lxc.cgroup.memory.limit_in_bytes = %(ram)s
-lxc.cgroup.devices.deny = a
-# Allow any mknod (but not using the node)
-lxc.cgroup.devices.allow = c *:* m
-lxc.cgroup.devices.allow = b *:* m
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-#lxc.cgroup.devices.allow = c 4:0 rwm
-#lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
-#fuse
-lxc.cgroup.devices.allow = c 10:229 rwm
-#tun
-lxc.cgroup.devices.allow = c 10:200 rwm
-#full
-lxc.cgroup.devices.allow = c 1:7 rwm
-#hpet
-lxc.cgroup.devices.allow = c 10:228 rwm
-#kvm
-lxc.cgroup.devices.allow = c 10:232 rwm
 """
 
 
@@ -951,7 +919,6 @@ def copy_configuration(path, rootfs, name, arch, ram, ipaddresses):
         'ttydir': '',
         'arch': arch,
         'path': path,
-        'rootfs': rootfs,
         'name': name,
         'ram': (ram * 1024000)
     }
@@ -977,10 +944,23 @@ def copy_configuration(path, rootfs, name, arch, ram, ipaddresses):
                 )
                 f.write('lxc.network.hwaddr = 00:16:3e:%s:%s:%s' % mac)
 
+    base_template = DEFAULT_LXC_CONFIG
+    common_template = os.path.join(LXC_TEMPLATE_CONFIG, 'defiant.common.conf')
+    if os.path.exists(common_template):
+        lxc_conf['include'] = common_template
+    else:
+        lxc_conf['include'] = None
+        base_template = base_template.replace('lxc.include', '# lxc.include')
+
+    LOG.info('Creating the configuration file at %s', config_file)
+    complete_template = base_template % lxc_conf
+    LOG.debug(complete_template)
     with open(config_file, 'ab') as f:
-        f.write(DEFAULT_LXC_CONFIG % lxc_conf)
+        f.write(complete_template)
 
     fstab_file = os.path.join(path, 'fstab')
+    LOG.info('Creating the default fstab %s', fstab_file)
+    LOG.debug(DEFAULT_FSTAB)
     with open(fstab_file, 'wb') as f:
         f.write(DEFAULT_FSTAB)
 
@@ -1180,30 +1160,6 @@ def _distro_check():
         raise SystemExit('Distro [ %s ] is unsupported.' % distro)
 
 
-def get_rootfs(rootfs, path):
-    """Return the path to working the rootfs.
-
-    :param rootfs: ``str``
-    :param path: ``str``
-    """
-    config_file = '%s/config' % rootfs
-    if rootfs is not None and os.path.exists(config_file):
-        # Iterate through the existing configuration file if lxc.rootfs
-        # is found use the mount point in config as the placement for
-        # the file system.
-        with open(config_file, 'rb') as f:
-            conf = [i for i in f.readlines() if i.startswith('lxc.rootfs')]
-        # If something was found, use it for the rootfs
-        if conf:
-            _config_root = conf[0]
-            config_root = _config_root.split('=')
-            return config_root[-1].strip()
-        else:
-            return os.path.join(path, 'rootfs')
-    else:
-        return os.path.join(path, 'rootfs')
-
-
 def main():
     """Run the main container Template."""
     args = arg_parser().parse_args()
@@ -1212,7 +1168,7 @@ def main():
     if os.getuid() is not 0:
         raise SystemExit('To use this template you must be ROOT')
 
-    rootfs = get_rootfs(args.rootfs, args.path)
+    rootfs = args.rootfs
 
     # Check for the HOST OS Type
     distro = _distro_check()
