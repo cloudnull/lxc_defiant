@@ -312,7 +312,10 @@ ARGS = {
         'action': 'append',
         'help': 'bind a local directory to the container. Every entry should'
                 ' be the FULL path to the directory that you want to bind'
-                ' within the container. This can be used multiple times.',
+                ' within the container. This can be used multiple times. If'
+                ' you provide a target path in your command the specified'
+                ' directory will be bound to the provided path. Example usage:'
+                ' -L /tmp -L /var/log/container_logs=/var/log',
     },
     'bindhome': {
         'args': [
@@ -788,19 +791,55 @@ def do_bindhome(rootfs, path, username, distro):
 def bind_mount(rootfs, path, local_path):
     """Bind a local path to to the container.
 
+    The method will examine the provided bind local_path and if it has 2
+    entries after spiting on "=" then the stated index 0 will is used as the
+    local path and index 1 is used for the container path.
+
+    This is useful when you have multiple container which may be binding to a
+    that could potentially write to the same file at the same time, such as
+    logging. In that case it may be useful to set a unique bind point for
+    local storage while being in a consistent directory.
+
+    >>> local_path = '/var/log=/var/log/glance1_log'
+
+    This would allow you to save logs in the host's directory for /var/log
+    though the specific set of logs for the container would be saved in
+    "/var/log/glance1_log"
+
     :param path: ``str``
     :param rootfs: ``str``
     :param local_path: ``str``
     """
-    # Extract the relitive path from the provided local path
-    relative_path = local_path.strip(os.sep)
-    lxc_home = os.path.join(rootfs, relative_path)
+    bind_data = local_path.split('=')
+    if len(bind_data) > 2:
+        LOG.error('Bind data [ %s ] is incorrectly formatted' % bind_data)
+        raise SystemExit('ERROR')
+    elif len(bind_data) == 2:
+        local, container = bind_data
+    else:
+        container = local = bind_data[0]
+
+    # Extract the relative path from the provided local path
+    container = container.strip(os.sep)
+
+    # Removing any training os separators
+    local = local.rstrip(os.sep)
+
+    lxc_path = os.path.join(rootfs, container)
 
     # Create the directory within the container if needed.
-    mkdir_p(lxc_home)
+    mkdir_p(lxc_path)
+
+    # ensure that the local directory exists, if not create it
+    mkdir_p(local)
+
+    LOG.info(
+        'Binding local path [ %s ] to container path [ %s ]'
+        % (local, lxc_path)
+    )
 
     # append to the fstab for the container for the new bind point.
-    bind_points = (local_path.rstrip(os.sep), relative_path)
+    bind_points = (local, container)
     bind_point = '%s %s none bind 0 0\n' % bind_points
     fstab = os.path.join(path, 'fstab')
     LOG.info('Writing bind point in container [ %s ]', fstab)
@@ -1014,12 +1053,6 @@ def post_process(rootfs, release, distro, install_packages, bindhome, path,
 
     if binddir is not None:
         for local_path in binddir:
-            if not os.path.exists(local_path):
-                LOG.error(
-                    'Local bind path does not exist "%s". Please confirm the'
-                    ' local path and try again.', local_path
-                )
-                raise SystemExit('ERROR')
             bind_mount(rootfs, path, local_path)
 
 
