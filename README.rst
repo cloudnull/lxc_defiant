@@ -22,20 +22,15 @@ Installing the Template
 
 To use this container template move it into the global templates directory
 
-On LXC < 1.0.0
-
-.. code-block:: bash
-
-  mv lxc-defiant /usr/lib/lxc/templates/lxc-defiant
-  chmod +x /usr/lib/lxc/templates/lxc-defiant
-
 
 On LXC > 1.0.0
 
 .. code-block:: bash
 
-  mv lxc-defiant /usr/share/lxc/templates/lxc-defiant
+  cp lxc-defiant /usr/share/lxc/templates/lxc-defiant
   chmod +x /usr/share/lxc/templates/lxc-defiant
+
+  cp defiant.common.conf /usr/share/lxc/config/defiant.common.conf
 
 
 Usage
