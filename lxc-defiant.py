@@ -27,6 +27,11 @@ LOG = logging.getLogger('lxc_defiant')
 LXC_TEMPLATE_CONFIG = "/usr/share/lxc/config"
 
 
+SUDOER = """
+%s ALL = NOPASSWD: ALL
+"""
+
+
 DEFAULT_POLICY_D = """
 #!/bin/sh
 exit 101
@@ -260,6 +265,14 @@ ARGS = {
         'action': 'store_true',
         'default': False,
         'help': 'Flush the image Cache',
+    },
+    'sudo_no_password': {
+        'args': [
+            '--sudo-no-password',
+        ],
+        'action': 'store_true',
+        'default': False,
+        'help': 'Create the new user with "no password sudo".'
     },
     'release': {
         'args': [
@@ -820,7 +833,7 @@ def bind_mount(rootfs, path, local_path):
 
 
 def configure_system(distro, rootfs, hostname, username, password,
-                     ipaddresses):
+                     ipaddresses, sudo_no_password):
     """Perform system configuration.
 
     :param distro: ``str``
@@ -829,6 +842,7 @@ def configure_system(distro, rootfs, hostname, username, password,
     :param username: ``str``
     :param password: ``str``
     :param ipaddresses: ``list``
+    :param sudo_no_password: ``bol``
     """
 
     def _interface_adder(device, address, netmask, gw=None):
@@ -918,6 +932,14 @@ def configure_system(distro, rootfs, hostname, username, password,
         % (username, password, rootfs)
     ]
     _execute_command(commands)
+
+    if sudo_no_password is True:
+        sudoer = SUDOER % username
+        LOG.info('Setting "%s" as a sudoer without a password' % username)
+        sudoers_path = os.path.join(rootfs, 'etc', 'sudoers')
+        with open(sudoers_path, 'ab') as f:
+            f.write(sudoer)
+            LOG.debug(sudoer)
 
 
 def copy_configuration(path, rootfs, name, arch, ram, ipaddresses):
@@ -1198,7 +1220,7 @@ def main():
     LOG.info('configuring container')
     configure_system(
         distro, rootfs, args.name, args.username,
-        args.password, args.ip_address
+        args.password, args.ip_address, args.sudo_no_password
     )
 
     # Copy the configuration to the container
