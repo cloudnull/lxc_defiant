@@ -27,7 +27,7 @@ On LXC > 1.0.0
 
 .. code-block:: bash
 
-  cp lxc-defiant /usr/share/lxc/templates/lxc-defiant
+  cp lxc-defiant.py /usr/share/lxc/templates/lxc-defiant
   chmod +x /usr/share/lxc/templates/lxc-defiant
 
   cp defiant.common.conf /usr/share/lxc/config/defiant.common.conf
